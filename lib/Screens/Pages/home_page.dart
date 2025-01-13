@@ -29,7 +29,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _fetchTasks() async {
-    final url = Uri.parse('$baseUrl/tasks.json');
+    final user = AuthService().currentUser;
+    if (user == null) return;
+
+    final url = Uri.parse('$baseUrl/tasks/${user.uid}.json');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -38,7 +41,7 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _tasks = (data as Map<String, dynamic>).entries.map((entry) {
               final task = Task.fromJson(entry.value);
-              task.id = entry.key; // Assigning Firebase ID for future updates
+              task.id = entry.key;
               return task;
             }).toList();
           });
@@ -58,12 +61,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _addTask() async {
-    if (_titleController.text.isEmpty || _descriptionController.text.isEmpty) {
+    final user = AuthService().currentUser;
+    if (user == null ||
+        _titleController.text.isEmpty ||
+        _descriptionController.text.isEmpty) {
       _showToast("Title and Description are required", Colors.red);
       return;
     }
 
-    final url = Uri.parse('$baseUrl/tasks.json');
+    final url = Uri.parse('$baseUrl/tasks/${user.uid}.json');
     final task = Task(
       title: _titleController.text,
       description: _descriptionController.text,
@@ -77,7 +83,7 @@ class _HomePageState extends State<HomePage> {
       );
       if (response.statusCode == 200) {
         _showToast("Task added successfully", Colors.green);
-        _fetchTasks(); // Refresh tasks from database
+        _fetchTasks();
         _titleController.clear();
         _descriptionController.clear();
       } else {
@@ -89,9 +95,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _updateTask(Task task) async {
-    if (task.id == null) return;
+    final user = AuthService().currentUser;
+    if (user == null || task.id == null) return;
 
-    final url = Uri.parse('$baseUrl/tasks/${task.id}.json');
+    final url = Uri.parse('$baseUrl/tasks/${user.uid}/${task.id}.json');
     try {
       final response = await http.patch(
         url,
@@ -99,7 +106,7 @@ class _HomePageState extends State<HomePage> {
       );
       if (response.statusCode == 200) {
         _showToast("Task updated successfully", Colors.green);
-        _fetchTasks(); // Refresh tasks from database
+        _fetchTasks();
       } else {
         _showToast("Failed to update task", Colors.red);
       }
@@ -109,12 +116,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _deleteTask(String taskId) async {
-    final url = Uri.parse('$baseUrl/tasks/$taskId.json');
+    final user = AuthService().currentUser;
+    if (user == null) return;
+
+    final url = Uri.parse('$baseUrl/tasks/${user.uid}/$taskId.json');
     try {
       final response = await http.delete(url);
       if (response.statusCode == 200) {
-        _showToast("Task deleted successfully", Colors.red);
-        _fetchTasks(); // Refresh tasks from database
+        _showToast("Task deleted successfully", Colors.green);
+        _fetchTasks();
       } else {
         _showToast("Failed to delete task", Colors.red);
       }
